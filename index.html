@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>College Timetable — Updated</title>
+<style>
+:root{--blue:#2457c5;--navy:#14213d;--bg:#f4f7fb;--line:#dce3ee;--text:#182230;--green:#16804a;--amber:#9a6700}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;padding:24px 18px}.wrap{max-width:1000px;margin:auto;padding:0 16px}
+h1{margin:0;font-size:clamp(1.5rem,4vw,2.2rem)}header p{margin:7px 0 0;color:#e6edff}
+main{padding:18px 0 35px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin:16px 0;box-shadow:0 5px 18px #1822300a}
+.switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.switch button{padding:13px 8px;border:1px solid var(--line);border-radius:11px;background:#fff;font:inherit;font-weight:700;color:var(--text);cursor:pointer}
+.switch button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.status{font-size:.9rem;color:#667085;margin:10px 0}.hero{padding:16px;border-radius:12px;background:#eef3fb;margin:12px 0}.hero.running{background:#eaf7ef;border:1px solid #b7e4c7}.hero.next{background:#fff6df;border:1px solid #f3d58a}
+.hero-label{font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#475467}.hero h2{margin:7px 0;font-size:1.35rem}.hero p{margin:5px 0;color:#475467}
+.hourlist{display:grid;gap:10px}.hour{display:block;border:1px solid var(--line);border-radius:11px;padding:10px;background:#fff}.hour-label{display:none}.hour-content{display:grid;gap:8px}
+.classitem{display:block;width:100%;border:1px solid var(--line);border-left:4px solid var(--blue);background:#f7f9ff;padding:12px;border-radius:9px;margin:0;overflow-wrap:anywhere}.classitem.running{border-color:#b7e4c7;border-left:4px solid var(--green);background:#effaf3}.classitem.next{border-color:#f3d58a;border-left:4px solid #d08a00;background:#fff9e9}
+.class-time{font-weight:750;color:var(--blue)}.classitem.running .class-time{color:var(--green)}.classitem.next .class-time{color:var(--amber)}.class-title{font-weight:700;margin:3px 0}.meta{color:#667085;font-size:.9rem}
+.hidden{display:none!important}.empty{padding:22px;text-align:center;color:#667085;border:1px dashed var(--line);border-radius:10px}
+button{cursor:pointer}input,select{font:inherit;border:1px solid var(--line);border-radius:9px;padding:10px;background:white;width:100%}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.fields label{display:flex;flex-direction:column;gap:5px;font-size:.87rem;color:#475467}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.actions button,.manage button{font:inherit;border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:#fff}.primary{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{border-collapse:collapse;width:100%;min-width:570px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}th{background:#eef3fb}
+.note{background:#fff8e6;border:1px solid #f3d58a;border-radius:9px;padding:11px;font-size:.85rem}
+footer{text-align:center;color:#667085;padding:18px;font-size:.85rem}
+@media(max-width:480px){.card{padding:13px}.classitem{padding:11px}}
+</style></head><body>
+<header><div class="wrap"><h1>College Timetable</h1><p>Live class status and daily schedule</p></div></header>
+<main class="wrap">
+<section class="card">
+<div class="switch">
+<button id="runningTab" class="active">Running Class</button>
+<button id="todayTab">Today's Class / Next Class</button>
+</div>
+<div id="runningView"><div id="runningContent" class="empty">Loading timetable…</div></div>
+<div id="todayView" class="hidden"><div id="todayContent"></div></div>
+<p id="status" class="status" aria-live="polite"></p>
+</section>
+<section class="card">
+<h2>Admin — Manage classes</h2>
+<button id="adminBtn" class="primary">Unlock admin</button>
+<div id="adminPanel" class="hidden">
+<form id="form"><input type="hidden" id="editId"><div class="fields">
+<label>Course<input id="course" required placeholder="e.g. B.Sc Allied Health Sciences"></label>
+<label>Year / Section<input id="year" required placeholder="e.g. 1st Year, Section A"></label>
+<label>Subject<input id="subject" required></label><label>Room<input id="room"></label>
+<label>Day<select id="day" required><option value="">Choose day</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></label>
+<label>Start time<input id="start" type="time" required></label><label>End time<input id="end" type="time" required></label>
+</div><div class="actions"><button class="primary" id="save">Add class</button><button type="button" id="cancel">Cancel edit</button><button type="button" id="lock">Lock admin</button></div></form>
+<div class="tablewrap"><table><thead><tr><th>Day / Time</th><th>Course / Year</th><th>Subject</th><th>Room</th><th>Manage</th></tr></thead><tbody id="adminRows"></tbody></table></div>
+<p class="note">Simple HTML password prompt only. Public Supabase write access is required for edits without a Supabase login; anyone who can inspect this page may bypass the password.</p>
+</div>
+</section>
+</main><footer>Website Design by Subhadip</footer>
+<script>
+const URL="https://agdpazwbggohfxvriiqp.supabase.co";
+const KEY="sb_publishable_6Fq_VAf6F2QmHQxFEqv5eg_0pepN-ht";
+const ADMIN_PASSWORD="ADMIN@AHS"; 
+const TABLE="timetable", $=id=>document.getElementById(id);
+const headers={apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"application/json"};
+const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+let data=[],unlocked=false,activeView="running";
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function mins(v){if(!v)return 0;let p=v.split(":");return +p[0]*60+(+p[1]||0)}
+function label(m){m=((m%1440)+1440)%1440;let h=Math.floor(m/60),mm=m%60,ap=h>=12?"PM":"AM",hh=h%12||12;return hh+(mm?":"+String(mm).padStart(2,"0"):"")+" "+ap}
+function sort(a,b){return days.indexOf(a.day)-days.indexOf(b.day)||mins(a.start_time)-mins(b.start_time)}
+async function api(path,opt={}){const r=await fetch(URL+"/rest/v1/"+path,{...opt,headers:{...headers,...opt.headers}});const body=await r.text();if(!r.ok)throw Error("Supabase HTTP "+r.status+": "+(body||r.statusText));if(!body.trim())return null;try{return JSON.parse(body)}catch(e){throw Error("Unexpected Supabase response: "+body)}}
+function itemHTML(x,now){let s=mins(x.start_time),e=mins(x.end_time),running=now>=s&&now<e,next=now<s;return `<div class="classitem ${running?"running":next?"next":""}"><div class="class-time">${esc(label(s))} – ${esc(label(e))}${running?" · NOW":""}</div><div class="class-title">${esc(x.subject)}</div><div class="meta">${esc(x.course)} · ${esc(x.year)}${x.room?" · "+esc(x.room):""}</div></div>`}
+function todayClasses(){let d=days[new Date().getDay()];return data.filter(x=>x.day===d).sort((a,b)=>mins(a.start_time)-mins(b.start_time))}
+function render(){
+ const nowDate=new Date(),now=nowDate.getHours()*60+nowDate.getMinutes(),today=todayClasses();
+ const running=today.filter(x=>mins(x.start_time)<=now&&now<mins(x.end_time));
+ const next=today.find(x=>mins(x.start_time)>now);
+ if(running.length){
+   $("runningContent").innerHTML=`<div class="hero running"><div class="hero-label">Happening now</div><h2>${running.length===1?esc(running[0].subject):"Running classes"}</h2></div><div class="hourlist">${running.map(x=>`<div class="hour">${itemHTML(x,now)}</div>`).join("")}</div>`;
+ }else if(next){
+   $("runningContent").innerHTML=`<div class="hero next"><div class="hero-label">No class running right now · Next class</div><h2>${esc(next.subject)}</h2><p>${esc(label(mins(next.start_time)))}–${esc(label(mins(next.end_time)))}</p><p>${esc(next.course)} · ${esc(next.year)}${next.room?" · "+esc(next.room):""}</p></div>`;
+ }else{
+   $("runningContent").innerHTML=`<div class="empty">No class is running right now, and no more classes are scheduled for today.</div>`;
+ }
+ if(!today.length){$("todayContent").innerHTML='<div class="empty">No classes are scheduled for today.</div>';}
+ else{
+   let html=`<div class="hero ${running.length?"running":next?"next":""}"><div class="hero-label">${running.length?"Running now":next?"Next class":"Today"}</div><h2>${running.length?esc(running[0].subject):next?esc(next.subject):"Today's classes completed"}</h2>${running.length?`<p>${esc(label(mins(running[0].start_time)))}–${esc(label(mins(running[0].end_time)))}</p>`:next?`<p>${esc(label(mins(next.start_time)))}–${esc(label(mins(next.end_time)))}</p>`:""}</div><div class="hourlist">`;
+   today.forEach(x=>{html+=`<div class="hour">${itemHTML(x,now)}</div>`;});
+   html+='</div>';$("todayContent").innerHTML=html;
+ } 
+}
+async function load(){try{data=await api(TABLE+"?select=*&order=day.asc,start_time.asc");render();$("status").textContent="Schedule updated."}catch(e){$("status").textContent="Could not load timetable. Check Supabase permissions: "+e.message;$("runningContent").innerHTML='<div class="empty">Timetable could not be loaded.</div>'}}
+function setView(view){activeView=view;$("runningTab").classList.toggle("active",view==="running");$("todayTab").classList.toggle("active",view==="today");$("runningView").classList.toggle("hidden",view!=="running");$("todayView").classList.toggle("hidden",view!=="today");render()}
+$("runningTab").onclick=()=>setView("running");$("todayTab").onclick=()=>setView("today");
+$("adminBtn").onclick=()=>{if(unlocked){$("adminPanel").classList.toggle("hidden");return}let p=prompt("Enter admin password");if(p===ADMIN_PASSWORD){unlocked=true;$("adminPanel").classList.remove("hidden");renderAdmin()}else if(p!==null)alert("Incorrect password.")};
+$("lock").onclick=()=>{unlocked=false;$("adminPanel").classList.add("hidden")};
+function renderAdmin(){$("adminRows").innerHTML=data.slice().sort(sort).map(x=>`<tr><td>${esc(x.day)}<br>${esc(label(mins(x.start_time)))}–${esc(label(mins(x.end_time)))}</td><td>${esc(x.course)}<br><small>${esc(x.year)}</small></td><td>${esc(x.subject)}</td><td>${esc(x.room)}</td><td class="manage"><button data-edit="${x.id}">Edit</button> <button data-del="${x.id}">Delete</button></td></tr>`).join("")||'<tr><td colspan="5">No classes added.</td></tr>'}
+$("adminRows").addEventListener("click",async e=>{let ed=e.target.closest("[data-edit]"),del=e.target.closest("[data-del]");if(ed){let x=data.find(v=>String(v.id)===ed.dataset.edit);$("editId").value=x.id;for(let [id,key] of [["course","course"],["year","year"],["subject","subject"],["room","room"],["day","day"],["start","start_time"],["end","end_time"]])$(id).value=(x[key]||"").slice(0,5);$("save").textContent="Save changes"}
+if(del&&confirm("Delete this class?"))try{await api(TABLE+"?id=eq."+encodeURIComponent(del.dataset.del),{method:"DELETE"});await load();renderAdmin()}catch(e){alert("Delete failed: "+e.message)}});
+$("form").addEventListener("submit",async e=>{e.preventDefault();let x={course:$("course").value.trim(),year:$("year").value.trim(),subject:$("subject").value.trim(),room:$("room").value.trim(),day:$("day").value,start_time:$("start").value,end_time:$("end").value};if(mins(x.end_time)<=mins(x.start_time)){alert("End time must be after start time.");return}
+try{let id=$("editId").value;if(id)await api(TABLE+"?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(x)});else await api(TABLE,{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(x)});$("form").reset();$("editId").value="";$("save").textContent="Add class";await load();renderAdmin()}catch(e){alert("Save failed: "+e.message)}});
+$("cancel").onclick=()=>{$("form").reset();$("editId").value="";$("save").textContent="Add class"};
+load();setInterval(render,30000);
+</script></body></html>
